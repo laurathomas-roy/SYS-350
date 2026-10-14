@@ -1,4 +1,4 @@
-# main.tf - Provider configuration
+# main.tf - LAMP Stack with Terraform (scalable)
 
 terraform {
   required_providers {
@@ -13,6 +13,8 @@ provider "docker" {
   host = "unix:///var/run/docker.sock"
 }
 
+# --- Singular resources (one per stack) ---
+
 resource "docker_network" "lamp_network" {
   name   = "${var.student_name}-lamp-network"
   driver = "bridge"
@@ -26,15 +28,23 @@ resource "docker_image" "mysql" {
   name = "mysql:8.0"
 }
 
+resource "docker_image" "web" {
+  name = "${var.student_name}-lamp-web:latest"
+  build {
+    context    = abspath("${path.module}/php")
+    dockerfile = "Dockerfile"
+  }
+}
+
 resource "docker_container" "db" {
   name  = "${var.student_name}-db"
   image = docker_image.mysql.image_id
 
   env = [
-    "MYSQL_ROOT_PASSWORD=rootpassword",
-    "MYSQL_DATABASE=myapp",
-    "MYSQL_USER=appuser",
-    "MYSQL_PASSWORD=apppassword",
+    "MYSQL_ROOT_PASSWORD=${var.mysql_root_password}",
+    "MYSQL_DATABASE=${var.mysql_database}",
+    "MYSQL_USER=${var.mysql_user}",
+    "MYSQL_PASSWORD=${var.mysql_password}",
   ]
 
   volumes {
@@ -52,21 +62,17 @@ resource "docker_container" "db" {
   }
 }
 
-resource "docker_image" "web" {
-  name = "${var.student_name}-lamp-web:latest"
-  build {
-    context = abspath("${path.module}/php")
-    dockerfile = "Dockerfile"
-  }
-}
+# --- Scalable resource (multiple instances) ---
 
 resource "docker_container" "web" {
-  name  = "${var.student_name}-web"
+  count = var.web_count
+
+  name  = "${var.student_name}-web-${count.index}"
   image = docker_image.web.image_id
 
   ports {
     internal = 80
-    external = var.web_port
+    external = var.web_port + count.index
   }
 
   volumes {
@@ -76,9 +82,9 @@ resource "docker_container" "web" {
 
   env = [
     "DB_HOST=${var.student_name}-db",
-    "DB_USER=appuser",
-    "DB_PASSWORD=apppassword",
-    "DB_NAME=myapp",
+    "DB_USER=${var.mysql_user}",
+    "DB_PASSWORD=${var.mysql_password}",
+    "DB_NAME=${var.mysql_database}",
   ]
 
   networks_advanced {

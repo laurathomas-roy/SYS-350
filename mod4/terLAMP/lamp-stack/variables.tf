@@ -41,3 +41,10 @@ variable "mysql_password" {
   default     = "apppassword"
   sensitive   = true
 }
+
+variable "web_count" {
+  description = "Number of web containers to deploy"
+  type        = number
+  default     = 1
+}
+
