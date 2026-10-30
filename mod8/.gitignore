@@ -1,0 +1,12 @@
+# .gitignore
+.terraform/
+terraform.tfstate
+terraform.tfstate.backup
+terraform.tfstate.*.backup
+*.tfvars
+crash.log
+*override.tf
+*override.tf.json
+deploy_key
+cloud-init-server*.yaml
+lab-key*
